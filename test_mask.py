@@ -4,11 +4,12 @@ import os
 import yaml
 import time
 
+from torchvision import transforms
 from matplotlib import pyplot as plt
 
 from model.network import Net
 
-mask_dir = "./data/DVRK/5.jpg"
+mask_dir = "./data/DVRK/2.jpg"
 config_dir = "./config.yml"
 model_dir = "./dht_r50_nkl_d97b97138.pth"
 
@@ -24,6 +25,7 @@ if os.path.isfile(model_dir):
         model.load_state_dict(checkpoint['state_dict'])
     else:
         model.load_state_dict(checkpoint)
+    print("=> loaded checkpoint '{}'".format(model_dir))
 else:
     print("=> no pretrained model found at '{}'".format(model_dir))
 
@@ -31,24 +33,36 @@ else:
 # img = cv2.imread(mask_dir, cv2.IMREAD_GRAYSCALE)
 # img = cv2.GaussianBlur(img, (13, 13), 0)
 # img = cv2.Canny(img, 50, 150, apertureSize=3)
-# img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-img = cv2.imread(mask_dir)
-cv2.imshow("Input Image", img)
+# # img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+# img = cv2.imread(mask_dir, cv2.IMREAD_COLOR)
+# img = cv2.resize(img, (400, 400))
+# cv2.imshow("Input Image", img)
+
+# Read image as a PIL Image
+from PIL import Image
+img = Image.open(mask_dir).convert('RGB')
+
+transform = transforms.Compose(
+    [
+        transforms.Resize((400, 400)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ]
+)
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
-img = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0).float().cuda(device=CONFIGS["TRAIN"]["GPU_ID"])
+img = transform(img).cuda()
+img = img.unsqueeze(0)  # Add batch dimension
+print(img.shape)
 
-# shrink the image
-size = (img.shape[2] // 2, img.shape[3] // 2)
-img = torch.nn.functional.interpolate(img, size=size, mode='bilinear', align_corners=False)
+model.eval()
 
 with torch.no_grad():
-    key_points = model(img)
-
     start_time = time.time()
     key_points = model(img)
+    # key_points = torch.sigmoid(key_points)
     end_time = time.time()
 
 print("Time taken for inference: {:.4f} seconds".format(end_time - start_time))
@@ -58,22 +72,32 @@ print(key_points.size())
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
 
 # First subplot: Key Points Heatmap
-key_points_np = key_points.squeeze(0).cpu().numpy() * 100
-key_points_np = key_points_np.transpose(1, 2, 0)  # Change to HWC format
+key_points_np = key_points.squeeze().cpu().numpy()
 im1 = ax1.imshow(key_points_np, cmap='jet')
 ax1.axis('off')
 ax1.set_title("Raw Heatmap")
 # Add a colorbar to the first subplot
 cbar1 = plt.colorbar(im1, ax=ax1, fraction=0.046)
 
+from skimage.measure import label, regionprops
+
 # Second subplot: Binary Key Points
-key_points_np = (key_points).sigmoid().squeeze(0).cpu().numpy() 
-# binary_mask = key_points_np > CONFIGS['MODEL']['THRESHOLD']
-# key_points_np[~binary_mask] = 0.0
-key_points_np = key_points_np.transpose(1, 2, 0)  # Change to HWC format
+key_points = torch.sigmoid(key_points)  # Apply sigmoid to get probabilities
+key_points_np = key_points.squeeze().cpu().numpy()
+binary_kmap = key_points.squeeze().cpu().numpy() > CONFIGS['MODEL']['THRESHOLD']
 im2 = ax2.imshow(key_points_np, cmap='jet')
+kmap_label = label(binary_kmap, connectivity=1)
+props = regionprops(kmap_label)
+plist = []
+for prop in props:
+    plist.append(prop.centroid)
+print("Number of lines detected: ", len(plist))
+# draw stars at the centroids
+for point in plist:
+    ax2.plot(point[1], point[0], 'y*', markersize=10)  # Note: (y, x) for plotting
+
 ax2.axis('off')
-ax2.set_title("Softmax Heatmap")
+ax2.set_title("Sigmoid Heatmap")
 # Add a colorbar to the second subplot
 cbar2 = plt.colorbar(im2, ax=ax2, fraction=0.046)
 

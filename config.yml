@@ -1,10 +1,10 @@
 DATA:
     DIR: "data/training/"
     VAL_DIR: "data/training/"
-    TEST_DIR: "data/NKL"
+    TEST_DIR: "data/DVRK"
     LABEL_FILE: "data/training/nkl_train.txt"
     VAL_LABEL_FILE: "data/training/nkl_val.txt"
-    TEST_LABEL_FILE: "data/training/nkl_test.txt"
+    TEST_LABEL_FILE: "data/training/dvrk_test.txt"
     # DIR: "data/training/"
     # VAL_DIR: "data/training/"
     # TEST_DIR: "data/training"
@@ -25,7 +25,7 @@ MODEL:
     NUMANGLE: 100
     NUMRHO: 100
     FIX: True
-    THRESHOLD: 0.01
+    THRESHOLD: 0.0001
     EDGE_ALIGN: False
     BACKBONE: resnet50 
     # only support : resnet18, resnet50, resnet101, mobilenetv2, resnext50, res2net50, vgg16

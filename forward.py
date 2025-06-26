@@ -31,7 +31,7 @@ parser.add_argument('--tmp', default="", help='tmp')
 args = parser.parse_args()
 
 assert os.path.isfile(args.config)
-CONFIGS = yaml.load(open(args.config))
+CONFIGS = yaml.full_load(open(args.config))
 
 # merge configs
 if args.tmp != "" and args.tmp != CONFIGS["MISC"]["TMP"]:
@@ -86,6 +86,7 @@ def test(test_loader, model, args):
             images, names, size = data
             
             images = images.cuda(device=CONFIGS["TRAIN"]["GPU_ID"])
+            # print(images.shape)
             # size = (size[0].item(), size[1].item())       
             key_points = model(images)
             
@@ -95,12 +96,15 @@ def test(test_loader, model, args):
             visualize_save_path = os.path.join(CONFIGS["MISC"]["TMP"], 'visualize_test')
             os.makedirs(visualize_save_path, exist_ok=True)
 
+            from matplotlib import pyplot as plt
+
             binary_kmap = key_points.squeeze().cpu().numpy() > CONFIGS['MODEL']['THRESHOLD']
             kmap_label = label(binary_kmap, connectivity=1)
             props = regionprops(kmap_label)
             plist = []
             for prop in props:
                 plist.append(prop.centroid)
+            print("Number of lines detected: ", len(plist))
 
             size = (size[0][0], size[0][1])
             b_points = reverse_mapping(plist, numAngle=CONFIGS["MODEL"]["NUMANGLE"], numRho=CONFIGS["MODEL"]["NUMRHO"], size=(400, 400))

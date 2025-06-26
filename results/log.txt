@@ -1,0 +1,6 @@
+2025-06-26 20:45:15,141 INFO Namespace(config='./config.yml', model='./dht_r50_nkl_d97b97138.pth', align=False, tmp='results')
+2025-06-26 20:45:15,714 INFO => loading pretrained model './dht_r50_nkl_d97b97138.pth'
+2025-06-26 20:45:15,835 INFO => loaded checkpoint './dht_r50_nkl_d97b97138.pth'
+2025-06-26 20:45:15,835 INFO Data loading done.
+2025-06-26 20:45:15,835 INFO Start testing.
+2025-06-26 20:45:16,236 INFO Test done! Total 7 imgs at 0.3509 secs without image io, fps: 19.949
